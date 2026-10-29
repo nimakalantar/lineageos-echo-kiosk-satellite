@@ -248,7 +248,7 @@ Switching between the two restarts Bluetooth, which drops what was connected. `a
 - **5 GHz.** The image connects to networks on every 5 GHz channel the US allows, the DFS channels 52 to 144 included, since a Dot has no SIM to learn its country from. It uses the 20 MHz primary channel of a wider network.
 - **WPA2/WPA3.** The image connects to a network in WPA2/WPA3 transition mode with WPA2. Its Wi-Fi cannot do WPA3, so it cannot join a network that only offers WPA3. Use WPA2 or WPA2/WPA3 for the Dot's network.
 - **Protected management frames.** The Dot's Wi-Fi cannot do protected management frames (PMF, 802.11w), so it cannot join a network that requires them. Set PMF to optional or off for the Dot's network. Most routers keep it optional in WPA2/WPA3 transition mode.
-- **adb works over Wi-Fi** on port 5555 without a password, so a Dot without a screen can always be reached. Anyone on your network can control the Dot this way, so keep it on a network you trust.
+- **adb works over Wi-Fi** on port 5555 without a password, so a Dot without a screen can always be reached. Anyone on your network can control the Dot this way, so keep it on a network you trust, or install your computer's key and require one: [adb keys](#adb-keys).
 - **adb root is off,** as LineageOS 18.1 ships it. Nothing in this guide needs it: `biscuit_service` and the other commands run from a normal `adb shell`. To use `adb root`, allow it first. LineageOS keeps this switch in Developer options, which the Dot has no screen for, so `biscuit_service` sets it:
 
   ```sh
@@ -257,6 +257,56 @@ Switching between the two restarts Bluetooth, which drops what was connected. `a
   ```
 
   `adb unroot` goes back to a normal shell. `biscuit_service adb root off` stops `adb root` from working again. A root shell can change anything on the Dot, so turn it off when you are done.
+
+### adb keys
+
+The Dot runs adb over Wi-Fi with no password, so a Dot without a screen can
+always be reached. So can anything else on the network, and a root shell is two
+commands away. To close that, install your computer's key and require one.
+
+Android shows a prompt the first time an unknown computer connects, which a Dot
+has no screen to show. A key already in `adb_keys` needs no prompt, though, so a
+Dot can be handed one over the connection it boots with:
+
+```sh
+adb shell biscuit_service adb key add "$(cat ~/.android/adbkey.pub)"
+```
+
+It answers `key installed, 1 in all`. Run it once per computer; the Dot keeps up
+to 32. A key that is not a key is refused rather than written, so a mistyped
+command cannot leave a file adbd will not read.
+
+Then require one:
+
+```sh
+adb shell biscuit_service adb secure on
+```
+
+adbd restarts, so this connection drops. Reconnect and it uses the key you
+installed. `adb secure off` takes that back, and only undoes what `on` did: an
+Echo Show asks for a key by itself, so there it changes nothing.
+
+With no key installed this is refused, since it would leave the Dot unreachable
+with no way back but recovery. `biscuit_service adb status` ends in
+`key required no`, or `key required yes, 1 installed`.
+
+**If you lose the key,** TWRP's adb needs none. Start TWRP, clear the setting and
+start Android again:
+
+```sh
+adb reboot recovery
+adb shell rm /data/property/persist.echo.adb_secure
+adb reboot
+```
+
+That leaves the keys installed but no longer required, so you can install a new
+one. Removing `/data/misc/adb/adb_keys` as well forgets them.
+
+**What this does not do.** It does not turn off `adb root`, which stays off and
+is a separate switch. It does not help against someone who already has a key, so
+remove a computer's key when the computer goes; that needs a root shell or TWRP.
+And it does not close the port: adbd still listens on 5555, and now refuses to
+talk to anything without a key.
 
 ### Kiosk Satellite installer
 

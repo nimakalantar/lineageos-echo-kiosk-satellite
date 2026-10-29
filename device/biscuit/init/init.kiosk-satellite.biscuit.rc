@@ -72,3 +72,12 @@ service ks_install /system/bin/ks-install
 
 on property:sys.boot_completed=1
     start ks_install
+
+# Whether adb requires a key, which biscuit_service adb secure on|off sets.
+# adbd reads it once, as it starts, so a change needs a restart. A Dot that
+# never sets the property matches neither trigger and is untouched.
+on property:sys.boot_completed=1 && property:persist.echo.adb_secure=0
+    restart adbd
+
+on property:sys.boot_completed=1 && property:persist.echo.adb_secure=1
+    restart adbd
